@@ -1,0 +1,144 @@
+\documentclass[conference]{IEEEtran}
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{physics}
+\begin{document}
+
+\title{Factoring RSA keys with Shor's algorithm}
+
+\author{\IEEEauthorblockN{Giulio Muscarello}}
+
+\maketitle
+
+\begin{abstract}
+RSA is a well-known public cryptography scheme that relies on the integer factorization problem. Shor's algorithm, first described in 1994, factorizes integers in polynomial time using a quantum computer. We present an improvement to the Qiskit implementation of Shor's algorithm and demonstrate an attack on communications protected by RSA.
+\end{abstract}
+
+\section{Introduction}
+We know from the fundamental theorem of arithmetic that every positive integer has a unique prime factorization. There are no known classical algorithms that can factor integers in polynomial time; in fact, the problem of whether such an algorithm exists is known as the "integer factorization problem". Many cryptographic schemes are based on the difficulty of factoring composite integers. Among them, RSA is the most common cryptosystem.
+
+Shor proved \cite{shor} that quantum computers can solve the factorization problem in linear time, and developed an algorithm for this purpose. The impact of quantum computers on the security of encrypted data and communications is therefore a key concern in the security community, and the development of so-called "post-quantum cryptography" is an active area of research. This paper presents a demonstration of Shor's algorithm to attack a toy RSA example.
+
+\section{Algorithms}
+\subsection{RSA}
+RSA is an asymmetric cryptosystem, meaning that it produces a "public key" and a "private key". Any person can thus encrypt a message using the receiver's public key, and the receiver can decrypt it with his private key. Today RSA sees wide implementation, securing all sorts of communications from Internet browsing to e-mail traffic to instant messaging.
+
+A mathematical description of RSA is out of scope for this paper, and can be found in \cite{rsa}. For the purposes of this paper, the cryptosystem can be thought of as a private key $A = \{p, q\}$, where $p$ and $q$ are primes known only to the receiver, and a public key $n=pq$, which can be disseminated. The public key allows any third party to encrypt messages, and the private key allows the receiver to decrypt messages intended for him.
+
+\subsection{Reduction to the order-finding problem}
+Miller \cite{miller} proved that the problem of factoring $N$ can be reduced to the "period-finding problem": for a given $a < N - 1$, find the smallest $r$ such that $a^r \equiv 1 \mod N$ (i.e. find the order of the algebraic group of integers coprime with $N$ and smaller than $N$, hence the name of "order-finding problem" by which it is found in literature). Specifically, depending on the choice of $a$ we have that either:
+\begin{itemize}
+\item $N$ and $a$ have some common prime factors, in which case $p=\gcd(N, a)$ returns one prime and $N/p$ returns the other;
+\item let $r$ be the period defined above, then at least one of $p, q = \gcd(N, a^{r/2}\pm 1)$ are factors of $N$;
+\item neither hold, we had a "bad" choice of $a$.
+\end{itemize}
+
+It can be shown that in the generic case where $N$ has $k$ prime factors, the algorithm above yields a factor with probability $p=1-2^{1-k}$; in the case of RSA, $p=0.5$.
+
+The random choice of $a$ and the computation of possible factors is known as the "classical part" of Shor's algorithm. The solution to the period-finding problem however is of greater theoretical interest, and can be solved by the quantum algorithm that is at the core of Shor's algorithm.
+
+\subsection{Order-finding subroutine}
+We can further reduce the order-finding problem to the well-known problem of finding the eigenvalues of a unitary operator, which can be solved with the quantum phase estimation algorithm. Shor exploits the unitary operator
+\begin{equation}
+U_a: x \rightarrow ax \mod N
+\end{equation}
+whose eigenvalues\footnote{The reader can prove this by substitution: the eigenvectors take the form $\frac{1}{\sqrt{r}}\sum_{m=0}^{r-1}\exp(\frac{-2\pi i m n}{r})\ket{x^k \mod N}$.} are a function of $r$:
+\begin{equation}
+e^{2i\pi k/r}\text{ for some integer }k
+\end{equation}
+
+The phase estimation algorithm can estimate $\theta=k/r$ to within a given error $\epsilon$: it returns $\widetilde\theta \in (\theta-\epsilon, \theta+\epsilon)$. We then need to minimize the error to a point where classical algorithms can recover $\theta$ from $\widetilde\theta$.
+
+Because the candidates for $k/r$ are so close to one another (in the worst case, $1/N$ apart) and the number of gates is $O(1/\epsilon)$, direct application of the phase estimation algorithm is cost-prohibitive. We instead use a mathematical trick to increase accuracy at no additional cost.
+
+Consider the family of unitary operators
+\begin{equation}
+U_a, U_{(a^2)}, U_{(a^4)}, U_{(a^8)}...
+\end{equation}
+All such operators $U_b$ are integer powers of $U_a$: it is easy to verify that if $b = a^n$ then $U_b = (U_a)^n$. For this reason they have the same eigenvectors; and despite being integer powers they are generally as easy/costly to implement as $U_a$, since one need only precompute $a^n \mod N$ by repeated squaring. Their eigenvalues, however, have far lower error than $U_a$: note that if $U_a$ has an eigenvalue $e^{i\phi}$, then $U_{(a^2)}$ has an eigenvalue $e^{2i\phi}$, $U_{(a^4)}$ has an eigenvalue $e^{4i\phi}$, and so on. The QPE will then estimate $\phi$, $2\phi$, $4\phi$... to within the same error $\epsilon$, thus reducing the error on $\phi$ to $\epsilon$, $\epsilon/2$, $\epsilon/4$...
+
+It can be shown that for the purposes of determining $r$ it is sufficient to estimate a few randomly picked eigenvalues with a precision smaller than $1/N^2$, which corresponds to measuring the eigenvalues for all $U_b$ until $b=a^{(2^p)}$, $2^p \approx N^2$.
+
+\section{Demonstration}
+We now demonstrate the use of Shor's algorithm to decrypt a RSA key and thus read the contents of a communication encrypted with RSA. Specifically, we will use the implementation from IBM's Qiskit library.
+
+Practical concerns require us to use extremely small keys ($N=40$ at most), as the resulting circuits are otherwise too large and can take several minutes or hours to compute: empirically, we observe that a circuit for $N=33$ takes 9 minutes on the powerful IBM QASM simulator.
+
+
+
+%\subsection{\LaTeX-Specific Advice}
+
+%Please don't use the \verb|{eqnarray}| equation environment. Use \verb|{align}| or \verb|{IEEEeqnarray}| instead. The \verb|{eqnarray}|environment leaves unsightly spaces around relation symbols.
+
+%\subsection{Identify the Headings}
+%Headings, or heads, are organizational devices that guide the reader through 
+%your paper. There are two types: component heads and text heads.
+
+%Component heads identify the different components of your paper and are not 
+%topically subordinate to each other. Examples include Acknowledgments and 
+%References and, for these, the correct style to use is ``Heading 5''. Use 
+%``figure caption'' for your Figure captions, and ``table head'' for your 
+%table title. Run-in heads, such as ``Abstract'', will require you to apply a 
+%style (in this case, italic) in addition to the style provided by the drop 
+%down menu to differentiate the head from the text.
+
+%Text heads organize the topics on a relational, hierarchical basis. For 
+%example, the paper title is the primary text head because all subsequent 
+%material relates and elaborates on this one topic. If there are two or more 
+%sub-topics, the next level head (uppercase Roman numerals) should be used 
+%and, conversely, if there are not at least two sub-topics, then no subheads 
+%should be introduced.
+
+%\subsection{Figures and Tables}
+%\paragraph{Positioning Figures and Tables} Place figures and tables at the top and 
+%bottom of columns. Avoid placing them in the middle of columns. Large 
+%figures and tables may span across both columns. Figure captions should be 
+%below the figures; table heads should appear above the tables. Insert 
+%figures and tables after they are cited in the text. Use the abbreviation 
+%``Fig.~\ref{fig}'', even at the beginning of a sentence.
+%
+%\begin{table}[htbp]
+%\caption{Table Type Styles}
+%\begin{center}
+%\begin{tabular}{|c|c|c|c|}
+%\hline
+%\textbf{Table}&\multicolumn{3}{|c|}{\textbf{Table Column Head}} \\
+%\cline{2-4} 
+%\textbf{Head} & \textbf{\textit{Table column subhead}}& \textbf{\textit{Subhead}}& \textbf{\textit{Subhead}} \\
+%\hline
+%copy& More table copy$^{\mathrm{a}}$& &  \\
+%\hline
+%\multicolumn{4}{l}{$^{\mathrm{a}}$Sample of a Table footnote.}
+%\end{tabular}
+%\label{tab1}
+%\end{center}
+%\end{table}
+%
+%\begin{figure}[htbp]
+%\centerline{\includegraphics{fig1.png}}
+%\caption{Example of a figure caption.}
+%\label{fig}
+%\end{figure}
+
+%Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
+%rather than symbols or abbreviations when writing Figure axis labels to 
+%avoid confusing the reader. As an example, write the quantity 
+%``Magnetization'', or ``Magnetization, M'', not just ``M''. If including 
+%units in the label, present them within parentheses. Do not label axes only 
+%with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization 
+%\{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
+%quantities and units. For example, write ``Temperature (K)'', not 
+%``Temperature/K''.
+
+\begin{thebibliography}{00}
+\bibitem{shor} P. W. Shor, "Algorithms for quantum computation: discrete logarithms and factoring", SIAM J.Sci.Statist.Comput. 26, 1997
+\bibitem{rsa} R. Rivest, A. Shamir, L. Adleman, "A Method for Obtaining Digital Signatures and Public-Key Cryptosystems", Communications of the ACM 21, 1978
+\bibitem{miller} G. L. Miller, "Riemann's hypothesis and tests for primality", J. Comput. System Sci., 1976
+\bibitem{vbe} V. Vedral, A. Barenco, A. Ekert, "Quantum Networks for Elementary Arithmetic Operations", Physical Review A 54
+\bibitem{ibm} IBM, "Shor's algorithm",\\https://quantum-computing.ibm.com/docs/guide/q-algos/shor-s-algorithm
+\end{thebibliography}
+\vspace{12pt}
+
+\end{document}
