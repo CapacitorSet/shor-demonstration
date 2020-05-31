@@ -23,24 +23,22 @@ def isprime(n):
                 return False
     return True
 
-# Transforms a string into a sequence of values not greater than pq=33
+# Transforms a string into a sequence of values not greater than 8
 def serialize(plaintext):
     words = []
     for byte in bytes(plaintext, 'UTF-8'):
-        words.extend([byte & 0x1f, byte >> 5])
+        words.extend([byte & 7, (byte >> 3) & 7, byte >> 6])
     return words
 
 def deserialize(words):
     plaintext = []
-    # Trick to read two words at a time. https://stackoverflow.com/a/16789817
+    # Trick to read N words at a time. https://stackoverflow.com/a/16789817
     it = iter(words)
     for word in it:
-        plaintext.append(word + (next(it) << 5))
+        plaintext.append(word + (next(it) << 3) + (next(it) << 6))
     return plaintext
 
-def generate_keypair():
-    p = 11
-    q = 3
+def generate_keypair(p, q):
     n = p * q
     d = 7
     e = 3
@@ -49,9 +47,11 @@ def generate_keypair():
 
 def encrypt(msg_plaintext, pubkey):
     e, n = pubkey
+    # We encrypt one byte at a time, so as not to exceed N=pq as long as we
+    # don't pick an absurdly tiny value
     msg_serialized = serialize(msg_plaintext)
     msg_ciphertext = [pow(c, e, n) for c in msg_serialized]
-    return msg_ciphertext
+    return bytes(msg_ciphertext)
 
 def decrypt(msg_ciphertext, privkey):
     d, n = privkey
