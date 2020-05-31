@@ -2,6 +2,7 @@
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
+\usepackage{listings}
 \usepackage{physics}
 \begin{document}
 
@@ -38,7 +39,7 @@ It can be shown that in the generic case where $N$ has $k$ prime factors, the al
 
 The random choice of $a$ and the computation of possible factors is known as the "classical part" of Shor's algorithm. The solution to the period-finding problem however is of greater theoretical interest, and can be solved by the quantum algorithm that is at the core of Shor's algorithm.
 
-\subsection{Order-finding subroutine}
+\subsection{Order-finding subroutine}\label{order-finding}
 We can further reduce the order-finding problem to the well-known problem of finding the eigenvalues of a unitary operator, which can be solved with the quantum phase estimation algorithm. Shor exploits the unitary operator
 \begin{equation}
 U_a: x \rightarrow ax \mod N
@@ -68,9 +69,28 @@ Although RSA keys are almost universally 1024, 2048 or 3072 bits long, such size
 
 Mainstream RSA implementations are designed with reasonable minimum key sizes: for instance, OpenSSL requires 384 bits or more, and will fail with an error for shorter keys. This requirement partly stems from the use of padding schemes, which add desirable security properties such as non-determinism (the same message encrypted several times will have several different encryptions; this is not true with plain RSA), preventing partial decryption, and others. As we only want to explore the feasibility of factoring the RSA key, such security properties are not of interest to us, and we can use a custom RSA implementation with tiny keys and no padding schemes.
 
-We devise a simple client-server application that simulates an email service. Users can log in with their username and password, and once logged in they can browse their email messages. It uses a simple cryptographic protocol that simulates TLS, where the server sends its public key to the client, which in turn sends an encrypted AES key (a "session key") allowing for secure two-way communication. The goal of this demonstration is to capture the public key and factor it, allowing a third party to decrypt messages intended for the server and snoop on the credentials and the email messages.
-
 \subsection{Shor}
+We use the implementation of Shor's algorithm from the Qiskit library. The implementation uses the techniques outlined in section \ref{order-finding}, where the modular exponentiation circuit used to construct $U_b$ is derived in \cite{vbe}.
+
+We present a dramatic improvement upon this algorithm that brings the time spent constructing the circuit from 127 seconds (Qiskit's implementation at the time of writing) to 6 for $N=33$. The resulting circuit is identical and thus has the same execution time; this improvement merely makes the circuit construction faster.
+
+Simple line profiling shows that the Qiskit implementation spends a large amount of time "composing" subcircuits together (for instance, appending an IQFT circuit as part of the QPE routine). Delving into the library code shows that the composition of circuits is implemented by transforming the operands into DAGs\footnote{DAG: Directed Acyclic Graph.}, merging those, and then retransforming back into a circuit. We report an abridged version:
+
+\lstset{basicstyle=\ttfamily\footnotesize,breaklines=true}
+\begin{lstlisting}[language=Python]
+def compose(self, other):
+        dag_self = circuit_to_dag(self)
+        dag_other = circuit_to_dag(other)
+        dag_self.compose(dag_other)
+        return dag_to_circuit(dag_self)
+\end{lstlisting}
+
+Further profiling shows that the conversion from and to DAGs is very computationally intensive with respect to the other steps. The key intuition is that multiple compositions are therefore wasteful, as they spend a lot of time converting intermediate values back and forth; representing them as DAGs instead, only converting to and from DAGs respectively at the beginning and at the end of the algorithm, allows for much more efficient composition. In reality the composition takes additional arguments (most importantly the qubit indices on which to compose), which need to be stored along with the DAG - we call this object a "tagged DAG". This simple modification then allows to construct the circuit correctly with dramatic speed improvements.
+
+This improvement was discovered independently by Thomas Metcalfe, who submitted it in a slightly different form on May 25 as part of pull request \#975 to Qiskit Aqua. As the PR is not yet merged at the time of writing, we have released our implementation \cite{github-repo} as a separate repository.
+
+\subsection{Application}
+We develop a simple client-server application that simulates an email service. Users can log in with their username and password, and once logged in they can browse their email messages. It uses a simple cryptographic protocol that simulates TLS, where the server sends its public key to the client, which in turn sends an encrypted AES key (a "session key") allowing for secure two-way communication. The goal of this demonstration is to capture the public key and factor it, allowing a third party to decrypt messages intended for the server and snoop on the credentials and the email messages.
 
 
 %\subsection{\LaTeX-Specific Advice}
@@ -143,6 +163,7 @@ We devise a simple client-server application that simulates an email service. Us
 \bibitem{miller} G. L. Miller, "Riemann's hypothesis and tests for primality", J. Comput. System Sci., 1976
 \bibitem{vbe} V. Vedral, A. Barenco, A. Ekert, "Quantum Networks for Elementary Arithmetic Operations", Physical Review A 54
 \bibitem{ibm} IBM, "Shor's algorithm",\\https://quantum-computing.ibm.com/docs/guide/q-algos/shor-s-algorithm
+\bibitem{github-repo} G. Muscarello, https://github.com/CapacitorSet/qiskit-fast-shor
 \end{thebibliography}
 \vspace{12pt}
 
