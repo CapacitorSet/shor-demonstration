@@ -1,5 +1,4 @@
 \documentclass[conference]{IEEEtran}
-% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
@@ -62,10 +61,16 @@ All such operators $U_b$ are integer powers of $U_a$: it is easy to verify that 
 It can be shown that for the purposes of determining $r$ it is sufficient to estimate a few randomly picked eigenvalues with a precision smaller than $1/N^2$, which corresponds to measuring the eigenvalues for all $U_b$ until $b=a^{(2^p)}$, $2^p \approx N^2$.
 
 \section{Demonstration}
-We now demonstrate the use of Shor's algorithm to decrypt a RSA key and thus read the contents of a communication encrypted with RSA. Specifically, we will use the implementation from IBM's Qiskit library.
+We now demonstrate the use of Shor's algorithm to decrypt a RSA key and thus read the contents of a communication encrypted with RSA. Specifically, we will use the implementation contained in Qiskit, a mainstream open-source framework for quantum computing.
 
-Practical concerns require us to use extremely small keys ($N=40$ at most), as the resulting circuits are otherwise too large and can take several minutes or hours to compute: empirically, we observe that a circuit for $N=33$ takes 9 minutes on the powerful IBM QASM simulator.
+\subsection{RSA}
+Although RSA keys are almost universally 1024, 2048 or 3072 bits long, such sizes are computationally infeasible, and practical concerns require us to use extremely small keys (around $N=30$ at most). The resulting circuits are otherwise too large and can take several minutes or hours to compute: empirically, we observe that a circuit for $N=33$ is executed in 9 minutes on the powerful IBM QASM simulator. Needless to say, a key with $N<30$ provides no actual security as it can be factored by hand, and only serves as a demonstration in place of larger keys.
 
+Mainstream RSA implementations are designed with reasonable minimum key sizes: for instance, OpenSSL requires 384 bits or more, and will fail with an error for shorter keys. This requirement partly stems from the use of padding schemes, which add desirable security properties such as non-determinism (the same message encrypted several times will have several different encryptions; this is not true with plain RSA), preventing partial decryption, and others. As we only want to explore the feasibility of factoring the RSA key, such security properties are not of interest to us, and we can use a custom RSA implementation with tiny keys and no padding schemes.
+
+We devise a simple client-server application that simulates an email service. Users can log in with their username and password, and once logged in they can browse their email messages. It uses a simple cryptographic protocol that simulates TLS, where the server sends its public key to the client, which in turn sends an encrypted AES key (a "session key") allowing for secure two-way communication. The goal of this demonstration is to capture the public key and factor it, allowing a third party to decrypt messages intended for the server and snoop on the credentials and the email messages.
+
+\subsection{Shor}
 
 
 %\subsection{\LaTeX-Specific Advice}
