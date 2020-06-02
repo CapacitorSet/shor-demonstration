@@ -1,3 +1,5 @@
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 import logging
 import RSA
 import socketserver
@@ -23,13 +25,26 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         logging.debug("Sent: {}".format(pubkey_message))
         self.request.sendall(bytes(pubkey_message, 'utf-8'))
 
-        # Read the username and discard it
-        self.request.recv(1024)
-        # Read the password and discard it
-        self.request.recv(1024)
+        # Read the AES IV & session key
+        encrypted_session_key = self.request.recv(1024)
+        session_key = RSA.decrypt(encrypted_session_key, private)
+        logging.debug("Session key: " + session_key.hex())
+        iv = self.request.recv(16)
+        logging.debug("AES IV: " + iv.hex())
+        cipher = AES.new(session_key, AES.MODE_CBC, iv)
 
-        output = RSA.encrypt("henlo", public)
-        logging.debug("Sent: {}".format(output))
+        # Read the credentials. Pretend logins are always successful.
+        encrypted_email = self.request.recv(1024)
+        email = str(unpad(cipher.decrypt(encrypted_email), AES.block_size), 'UTF-8')
+        encrypted_password = self.request.recv(1024)
+        password = str(unpad(cipher.decrypt(encrypted_password), AES.block_size), 'UTF-8')
+        logging.info("New login: email={}, password={}".format(email, password))
+
+        # Workaround to force the crypto lib to play nice
+        cipher._next = [cipher.encrypt, cipher.decrypt]
+        # Send the list of emails
+        output = cipher.encrypt(pad(bytes("henlo", 'UTF-8'), AES.block_size))
+        logging.debug("Sent: " + output.hex())
         self.request.sendall(output)
         self.request.close()
 

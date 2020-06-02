@@ -1,3 +1,4 @@
+pycryptodome==3.9.7
 qiskit==0.19.2
 qiskit-aer==0.5.1
 qiskit-aqua==0.7.1

@@ -26,7 +26,7 @@ def isprime(n):
 # Transforms a string into a sequence of values not greater than 8
 def serialize(plaintext):
     words = []
-    for byte in bytes(plaintext, 'UTF-8'):
+    for byte in plaintext:
         words.extend([byte & 7, (byte >> 3) & 7, byte >> 6])
     return words
 
@@ -47,14 +47,25 @@ def generate_keypair(p, q):
 
 def encrypt(msg_plaintext, pubkey):
     e, n = pubkey
-    # We encrypt one byte at a time, so as not to exceed N=pq as long as we
-    # don't pick an absurdly tiny value
+    # We encrypt 3 bits at a time, so as not to exceed N=pq as long as we
+    # don't pick an absurdly tiny value. But assert it anyway.
+    assert n >= 8
     msg_serialized = serialize(msg_plaintext)
     msg_ciphertext = [pow(c, e, n) for c in msg_serialized]
     return bytes(msg_ciphertext)
 
+def encrypt_str(msg_plaintext, pubkey):
+    return encrypt(bytes(msg_plaintext, 'UTF-8'), pubkey)
+
 def decrypt(msg_ciphertext, privkey):
     d, n = privkey
+    assert n >= 8
+    msg_serialized = [(pow(c, d, n)) for c in msg_ciphertext]
+    return bytes([c for c in deserialize(msg_serialized)])
+
+def decrypt_str(msg_ciphertext, privkey):
+    d, n = privkey
+    assert n >= 8
     msg_serialized = [(pow(c, d, n)) for c in msg_ciphertext]
     msg_plaintext = [chr(c) for c in deserialize(msg_serialized)]
     return ''.join(msg_plaintext)

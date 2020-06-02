@@ -1,5 +1,7 @@
 A demonstration of Shor's algorithm attacking RSA keys. **Work in progress**.
 
+Requires Python 3.5 and up.
+
 Installation:
 
     pip install -r requirements.txt
