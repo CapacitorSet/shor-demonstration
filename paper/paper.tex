@@ -40,7 +40,9 @@ It can be shown that in the generic case where $N$ has $k$ prime factors, the al
 The random choice of $a$ and the computation of possible factors is known as the "classical part" of Shor's algorithm. The solution to the period-finding problem however is of greater theoretical interest, and can be solved by the quantum algorithm that is at the core of Shor's algorithm.
 
 \subsection{Order-finding subroutine}\label{order-finding}
-We can further reduce the order-finding problem to the well-known problem of finding the eigenvalues of a unitary operator, which can be solved with the quantum phase estimation algorithm. Shor exploits the unitary operator
+The key insight in Shor's algorithm is that the order-finding problem can be expressed in terms of finding the eigenvalues of a unitary operator, a problem which can be solved with the quantum phase estimation algorithm in $O((\log N)^3)$, i.e. linearly in the number of bits of $N$. For comparison, the best classical algorithm for factoring has a complexity of $O(e^{(\log N)^{1/3}(\log\log N)^{2/3}})$.
+
+Shor exploits the unitary operator
 \begin{equation}
 U_a: x \rightarrow ax \mod N
 \end{equation}
@@ -60,6 +62,9 @@ U_a, U_{(a^2)}, U_{(a^4)}, U_{(a^8)}...
 All such operators $U_b$ are integer powers of $U_a$: it is easy to verify that if $b = a^n$ then $U_b = (U_a)^n$. For this reason they have the same eigenvectors; and despite being integer powers they are generally as easy/costly to implement as $U_a$, since one need only precompute $a^n \mod N$ by repeated squaring. Their eigenvalues, however, have far lower error than $U_a$: note that if $U_a$ has an eigenvalue $e^{i\phi}$, then $U_{(a^2)}$ has an eigenvalue $e^{2i\phi}$, $U_{(a^4)}$ has an eigenvalue $e^{4i\phi}$, and so on. The QPE will then estimate $\phi$, $2\phi$, $4\phi$... to within the same error $\epsilon$, thus reducing the error on $\phi$ to $\epsilon$, $\epsilon/2$, $\epsilon/4$...
 
 It can be shown that for the purposes of determining $r$ it is sufficient to estimate a few randomly picked eigenvalues with a precision smaller than $1/N^2$, which corresponds to measuring the eigenvalues for all $U_b$ until $b=a^{(2^p)}$, $2^p \approx N^2$.
+
+\subsection{Modular exponentiation}
+The modular exponentiation procedure is at the heart of Shor's algorithm, and can be implemented in several ways. Notably, any classical computation (thus including modular exponentiation) can be expressed in terms of Toffoli gates, as they are universal for Boolean functions --- for an example of such a general approach, see \cite{toffoli}. However, in literature we can find specialized circuits for modular exponentiation, the first being described in a paper \cite{vbe} by Vedral, Barenco and Ekert and still used today in Qiskit's implementation of Shor's algorithm.
 
 \section{Demonstration}
 We now demonstrate the use of Shor's algorithm to decrypt a RSA key and thus read the contents of a communication encrypted with RSA. Specifically, we will use the implementation contained in Qiskit, a mainstream open-source framework for quantum computing.
@@ -90,7 +95,7 @@ Further profiling shows that the conversion from and to DAGs is very computation
 This improvement was discovered independently by Thomas Metcalfe, who submitted it in a slightly different form on May 25 as part of pull request \#975 to Qiskit Aqua. As the PR is not yet merged at the time of writing, we have released our implementation \cite{github-repo} as a separate repository.
 
 \subsection{Application}
-We develop a simple client-server application that simulates an email service. Users can log in with their username and password, and once logged in they can browse their email messages. It uses a simple cryptographic protocol that simulates TLS, where the server sends its public key to the client, which in turn sends an encrypted AES key (a "session key") allowing for secure two-way communication. The goal of this demonstration is to capture the public key and factor it, allowing a third party to decrypt messages intended for the server and snoop on the credentials and the email messages.
+We develop a simple client-server application that emulates an email service. Users can log in with their username and password, and once logged in they can browse their email messages. It uses a simple cryptographic protocol that simulates TLS, where the server sends its public key to the client, which in turn sends an encrypted AES key (a "session key") allowing for secure two-way communication. The goal of this demonstration is to capture the public key and factor it, allowing a third party to decrypt messages intended for the server and snoop on the credentials and the email messages.
 
 
 %\subsection{\LaTeX-Specific Advice}
@@ -158,10 +163,11 @@ We develop a simple client-server application that simulates an email service. U
 %``Temperature/K''.
 
 \begin{thebibliography}{00}
-\bibitem{shor} P. W. Shor, "Algorithms for quantum computation: discrete logarithms and factoring", SIAM J.Sci.Statist.Comput. 26, 1997
-\bibitem{rsa} R. Rivest, A. Shamir, L. Adleman, "A Method for Obtaining Digital Signatures and Public-Key Cryptosystems", Communications of the ACM 21, 1978
-\bibitem{miller} G. L. Miller, "Riemann's hypothesis and tests for primality", J. Comput. System Sci., 1976
+\bibitem{shor} P. W. Shor, "Algorithms for quantum computation: discrete logarithms and factoring", SIAM J.Sci.Statist.Comput. 26
+\bibitem{rsa} R. Rivest, A. Shamir, L. Adleman, "A Method for Obtaining Digital Signatures and Public-Key Cryptosystems", Communications of the ACM 21
+\bibitem{miller} G. L. Miller, "Riemann's hypothesis and tests for primality", J. Comput. System Sci.
 \bibitem{vbe} V. Vedral, A. Barenco, A. Ekert, "Quantum Networks for Elementary Arithmetic Operations", Physical Review A 54
+\bibitem{toffoli} D. Maslov, G. W. Dueck, D. M. Miller, "Toffoli network synthesis with templates," IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems
 \bibitem{ibm} IBM, "Shor's algorithm",\\https://quantum-computing.ibm.com/docs/guide/q-algos/shor-s-algorithm
 \bibitem{github-repo} G. Muscarello, https://github.com/CapacitorSet/qiskit-fast-shor
 \end{thebibliography}
