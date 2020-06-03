@@ -1,4 +1,5 @@
 from math import sqrt
+import random
 
 def gcd(a, b):
     if b == 0:
@@ -40,10 +41,19 @@ def deserialize(words):
 
 def generate_keypair(p, q):
     n = p * q
-    d = 7
-    e = 3
+    if p*q == 15:
+        d = 7
+        e = 3
+        return ((e, n), (d, n))
 
-    return ((e, n), (d, n))
+    phi = (p - 1) * (q - 1)
+    for e in range(1, phi):
+        g = gcd(e, phi)
+        d = mod_inverse(e, phi)
+        if g == 1 and e != d:
+            return ((e, n), (d, n))
+
+    raise Exception("No modular inverse exists for p, q = {}, {}".format(p, q))
 
 def encrypt(msg_plaintext, pubkey):
     e, n = pubkey
