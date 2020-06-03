@@ -41,19 +41,14 @@ def deserialize(words):
 
 def generate_keypair(p, q):
     n = p * q
-    if p*q == 15:
-        d = 7
-        e = 3
-        return ((e, n), (d, n))
-
     phi = (p - 1) * (q - 1)
-    for e in range(1, phi):
+    for e in range(2, phi):
         g = gcd(e, phi)
         d = mod_inverse(e, phi)
-        if g == 1 and e != d:
+        if g == 1:
             return ((e, n), (d, n))
 
-    raise Exception("No modular inverse exists for p, q = {}, {}".format(p, q))
+    raise Exception("No modular inverse found for p, q = {}, {}".format(p, q))
 
 def encrypt(msg_plaintext, pubkey):
     e, n = pubkey
