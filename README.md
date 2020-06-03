@@ -4,7 +4,8 @@ Requires Python 3.5 and up.
 
 Installation:
 
-    pip install -r requirements.txt
+ 1. `pip install -r requirements.txt`
+ 2. Clone https://github.com/CapacitorSet/qiskit-fast-shor in the subfolder `qiskit_fast_shor`
 
 Usage:
 

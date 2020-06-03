@@ -3,10 +3,16 @@ from Crypto.Util.Padding import pad, unpad
 import logging
 import RSA
 import socketserver
+import sys
 
-logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG)
+if "--debug" in sys.argv:
+    loglevel = logging.DEBUG
+else:
+    loglevel = logging.INFO
 
-public, private = RSA.generate_keypair(3, 11)
+logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=loglevel)
+
+public, private = RSA.generate_keypair(3, 5)
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
     """
@@ -43,7 +49,11 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         # Workaround to force the crypto lib to play nice
         cipher._next = [cipher.encrypt, cipher.decrypt]
         # Send the list of emails
-        output = cipher.encrypt(pad(bytes("henlo", 'UTF-8'), AES.block_size))
+        emails = \
+            "    <From maurizio.zamboni@polito.it> PolitOpenDays\n" +\
+            "    <From rettore@polito.it> Nuove indicazioni per le attività didattiche\n" +\
+            "    <From anna.carbone@polito.it> Your IICQ exam results"
+        output = cipher.encrypt(pad(bytes(emails, 'UTF-8'), AES.block_size))
         logging.debug("Sent: " + output.hex())
         self.request.sendall(output)
         self.request.close()
@@ -52,5 +62,5 @@ HOST, PORT = "localhost", 9999
 
 # Create the server, binding to localhost on port 9999
 with socketserver.TCPServer((HOST, PORT), MyTCPHandler) as server:
-    logging.info("Listening on {}".format(HOST, PORT))
+    logging.info("Listening on {}:{}".format(HOST, PORT))
     server.serve_forever()

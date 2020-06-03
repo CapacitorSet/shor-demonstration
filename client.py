@@ -8,7 +8,11 @@ import socket
 import sys
 
 HOST, PORT = "localhost", 9999
-logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG)
+if "--debug" in sys.argv:
+    loglevel = logging.DEBUG
+else:
+    loglevel = logging.INFO
+logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=loglevel)
 
 pubkey_pattern = re.compile("pubkey: e=([0-9]+), n=([0-9]+)")
 
@@ -42,11 +46,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 
     email = input("    Email: ")
     encrypted_email = cipher.encrypt(pad(bytes(email, 'UTF-8'), AES.block_size))
-    logging.debug("Sent {}".format(encrypted_email))
     sock.sendall(encrypted_email)
     password = input("    Password: ")
     encrypted_password = cipher.encrypt(pad(bytes(password, 'UTF-8'), AES.block_size))
-    logging.debug("Sent {}".format(encrypted_password))
     sock.sendall(encrypted_password)
     print("")
     print("Logged in successfully! Here are your emails:")
@@ -57,4 +59,4 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     # Receive data from the server and shut down
     indata = sock.recv(1024)
     decrypted = str(unpad(cipher.decrypt(indata), AES.block_size), 'UTF-8')
-    logging.debug("Received {}".format(decrypted))
+    print(decrypted)
