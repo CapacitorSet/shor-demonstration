@@ -1,4 +1,4 @@
-A demonstration of Shor's algorithm attacking RSA keys. **Work in progress**.
+A demonstration of Shor's algorithm attacking RSA keys.
 
 Requires Python 3.5 and up.
 
@@ -11,5 +11,12 @@ Usage:
 
   1. Start the sniffing tool: `sudo python sniff.py`
   2. Start the server: `python server.py`
-  3. Start the client with some string: `python client.py 'Hello world'`
-  4. The sniffing tool should detect the message and decrypt it with Shor's algorithm. (It actually doesn't at the time; the Shor implementation is in `quant.py`).
+  3. Start the client: `python client.py`
+  4. Send some fictitious credentials.
+  4. The sniffing tool should intercept the public key, factor it with Shor's algorithm, and decrypt the emails and credentials.
+
+Options:
+
+ * `--debug` enables debug-level logging.
+ * `--aer` (for sniff.py) uses the Aer backend. If this flag is not given, the default is the IBMQ QASM simulator.
+ * `--cache` (for sniff.py) uses cached jobs.
